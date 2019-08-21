@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.dao.TeacherDao">
+    <select id="findSelectByTeacher" parameterType="String" resultType="excel">
+        select tt.userId,t1.topicId,t1.topicName,t1.demand,t1.numberLimit,t1.majorLimit,t1.userDetail,t1.releaseSingal from topic_teacher tt
+        left  join (select t.topicId,t.topicName,t.demand,t.numberLimit,t.majorLimit,c1.userDetail,t.releaseSingal from topic t
+        left join (select c.topicId,group_concat(concat_ws('-',c.userId,u.userName,u.className,u.majorIn)) as userDetail from choose c
+        left join (select userId,userName,className,majorIn from users)u on u.userId=c.userId group by c.topicId)c1 on t.topicId=c1.topicId)t1 on t1.topicId=tt.topicId
+        <where>
+            <if test="userId != null and userId !=null">
+                tt.userId=#{userId}
+            </if>
+            <if test="releaseSignal != null and releaseSignal!=''">
+                and t1.releaseSingal=#{releaseSignal}
+            </if>
+        </where>
+    </select>
+    <select id="findStudentTopic" parameterType="String" resultType="studentAndTopic">
+        select *
+    </select>
+    <select id="findTopicById" parameterType="String" resultType="Integer">
+        select count(*) from topic where topicId=#{topicId}
+    </select>
+
+    <insert id="insertTopicDetail" parameterType="topic">
+        insert into topic(topicId,topicName,topicYear,demand,numberLimit,majorLimit,releaseSingal) values(#{topic.topicId},#{topic.topicName},#{topic.topicYear},#{topic.demand},#{topic.numberLimit},#{topic.majorLimit},#{topic.releaseSingal})
+    </insert>
+    <insert id="insertTopicTeacher" parameterType="topic">
+        insert into topic_teacher values (#{topic.userId},#{topic.topicId})
+    </insert>
+    <!--删除学生的选课-->
+    <delete id="deleteStudentTopic" parameterType="String">
+        delete from choose where userId=#{userId}
+    </delete>
+    <!--修改学生的选课状态-->
+    <update id="updateStudentSignal" parameterType="String">
+        update users set selectedSignal=#{selectedSignal} where userId=#{userId}
+    </update>
+    <!--添加学生选课-->
+    <insert id="insertStudentTopic" parameterType="String">
+        insert into choose values (#{userId},#{topicId})
+    </insert>
+    <!--查找添加进课程的学生，不管是否已经选课，不管老师-->
+    <select id="findStudentForInsert" parameterType="String" resultType="studentAndTopic">
+        select l.userId,u1.studentName,u1.majorIn,l.userState,u1.selectedSignal,u1.topicId,u1.topicName,u1.demand,u1.teacherId,u1.teacherName from login l
+        left join (select u.userId,u.userName as studentName,u.majorIn,u.selectedSignal,c1.topicId,c1.topicName,c1.demand,c1.teacherId,c1.userName as teacherName from users u
+            left join (select c.userId,t.teacherId,t.topicId,t.topicName,t.demand,t.userName from choose c
+            left join (select t1.topicId,t1.topicName,t1.demand,t2.userId as teacherId,t2.userName from topic t1
+            left  join (select tt.userId,tt.topicId,t3.userName from topic_teacher tt
+            left  join (select userId,userName from users)t3 on tt.userId=t3.userId)t2 on t2.topicId=t1.topicId)t on c.topicId=t.topicId)c1 on c1.userId=u.userId)u1 on u1.userId=l.userId
+        <where>
+            <if test="userId!=null and userId!=''">
+                    teacherId=#{userId}
+            </if>
+            and userState='user'
+        </where>
+    </select>
+    <select id="findOneTopic" parameterType="String" resultType="topic">
+        select * from topic where topicId=#{topicId}
+    </select>
+    <!-- 修改课题内容 -->
+    <update id="editThistopic" parameterType="topic">
+     	update topic set topicName=#{topic.topicName},topicYear=#{topic.topicYear},demand=#{topic.demand},
+     	numberLimit=#{topic.numberLimit},majorLimit=#{topic.majorLimit},deadline=#{topic.deadline},releaseSingal=#{topic.releaseSingal}
+     	where topicId=#{topic.topicId}
+     </update>
+
+    <delete id="deleteTopicInTopic" parameterType="String">
+     	delete from topic where topicId=#{topicId}
+     </delete>
+    <delete id="deleteTopicInToTea" parameterType="String">
+     	delete from topic_teacher where topicId=#{topicId}
+     </delete>
+    <delete id="deleteTopicInChoose" parameterType="String">
+     	delete from choose where topicId=#{topicId}
+     </delete>
+
+    <!-- 一键结束我的课题 -->
+    <update id="stopMyTopic" parameterType="String">
+     	update topic t INNER JOIN
+		(select topicId from topic_teacher where userId=#{userId}) r
+		SET t.releaseSingal=#{releaseSingal}
+        where  t.topicId=r.topicId
+     </update>
+
+</mapper>
